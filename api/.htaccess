@@ -1,0 +1,13 @@
+# Sổ Công 1.4.0 - API đồng bộ (quyenbds.com/socong/api/)
+Options -Indexes
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-store"
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+# Chỉ cho chạy đúng dongbo.php, mọi file khác trong thư mục này đều chặn
+<FilesMatch ".">
+  Require all denied
+</FilesMatch>
+<Files "dongbo.php">
+  Require all granted
+</Files>
