@@ -1,0 +1,10 @@
+# Trang tải Sổ Công cho Android - quyenbds.com/socong/apk/
+AddType application/vnd.android.package-archive .apk
+<IfModule mod_headers.c>
+  <FilesMatch "phien-ban\.json$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.apk$">
+    Header set Content-Disposition "attachment"
+  </FilesMatch>
+</IfModule>
