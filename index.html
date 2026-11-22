@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f4e79">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sổ Công</title>
+  <!-- Cài lên màn hình chính (iPhone: Safari → Chia sẻ → Thêm vào MH chính; Android: Chrome → Cài đặt ứng dụng) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sổ Công">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Sổ Công</div>
+    <button type="button" class="sync-dot" id="syncDot" hidden aria-label="Đồng bộ">✓</button>
+    <div class="period" id="periodLabel"></div>
+    <button type="button" class="btn-gear" id="btnSettings" aria-label="Cài đặt">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></g></svg>
+    </button>
+  </header>
+  <div class="name-row" id="nameRow" hidden>
+    <input type="text" id="nameInput" maxlength="40" placeholder="Tên người chấm công" autocomplete="off">
+  </div>
+
+  <div class="notice" id="notice" role="status" hidden></div>
+  <div class="pull-hint" id="pullHint" hidden>↓ Thả để đồng bộ</div>
+
+  <main class="sheet-wrap">
+    <table class="sheet" id="sheet">
+      <thead id="sheetHead"></thead>
+      <tbody id="sheetBody"></tbody>
+    </table>
+  </main>
+
+  <!-- Thanh chọn kỳ + nút Cài đặt -->
+  <nav class="bottombar" aria-label="Chọn kỳ công">
+    <div class="period-bar" id="periodBar"></div>
+    <button type="button" class="btn-today" id="btnToday" hidden>Hôm nay</button>
+  </nav>
+
+  <div class="picker-backdrop" id="pickerBackdrop" hidden></div>
+
+  <!-- Bảng nút nhanh khi chạm vào ô -->
+  <section class="picker" id="picker" hidden role="dialog" aria-labelledby="pickerTitle">
+    <div class="picker-title" id="pickerTitle"></div>
+    <div class="picker-buttons">
+      <button type="button" data-value="2">2</button>
+      <button type="button" data-value="1">1</button>
+      <button type="button" data-value="nghỉ">nghỉ</button>
+    </div>
+    <div class="picker-row">
+      <button type="button" data-action="clear" class="danger">Xoá ô</button>
+      <button type="button" data-action="auto" hidden>Tự tính</button>
+      <button type="button" data-action="close">Đóng</button>
+    </div>
+  </section>
+
+  <!-- Ghi chú theo ngày (lát 4): chạm vào ô ngày ở cột trái -->
+  <section class="picker" id="daySheet" hidden role="dialog" aria-labelledby="dayTitle">
+    <div class="picker-title"><b id="dayTitle"></b><div class="day-sheet-sub" id="daySub"></div></div>
+    <textarea id="noteInput" class="note-input" rows="3" maxlength="300" placeholder="Ghi chú cho ngày này (ví dụ: đi công tác, nghỉ ốm, làm bù…)"></textarea>
+    <div class="picker-row three">
+      <button type="button" data-action="note-clear" class="danger">Xoá</button>
+      <button type="button" data-action="note-close">Đóng</button>
+      <button type="button" data-action="note-save" class="primary">Lưu</button>
+    </div>
+  </section>
+
+  <!-- Cài đặt (lát 3) -->
+  <section class="settings" id="settings" hidden role="dialog" aria-label="Cài đặt">
+    <div class="settings-head">
+      <b>Cài đặt</b>
+      <button type="button" data-action="close-settings" class="link">Xong</button>
+    </div>
+    <div class="settings-body">
+      <div class="lic-row">
+        <span id="licStatus">Đang kiểm khoá…</span>
+        <button type="button" class="btn-plain small inline" id="btnEnterKey" data-action="enter-key">Nhập khoá mở</button>
+      </div>
+      <button type="button" class="btn-plain small" data-action="coffee">Mời tác giả ly cà phê ☕</button>
+      <label class="set-row"><span>Xem gọn cả kỳ trên một màn hình<small>Không phải cuộn; tắt đi thì dòng to, cuộn như cũ</small></span><input type="checkbox" class="switch" id="set_fitScreen"></label>
+      <label class="set-row"><span>Hiện lịch âm</span><input type="checkbox" class="switch" id="set_showLunar"></label>
+      <label class="set-row"><span>Ẩn ngày chưa chấm</span><input type="checkbox" class="switch" id="set_hideEmpty"></label>
+      <label class="set-row"><span>Hiện tổng tuần</span><input type="checkbox" class="switch" id="set_weekTotals"></label>
+      <label class="set-row"><span>Hiện ô tên người chấm</span><input type="checkbox" class="switch" id="set_showName"></label>
+      <label class="set-row"><span>Tự điền ngày công, ngày nghỉ<small>Full: T2–T6 = 2, T7 = 1 · CN và ngày lễ tự ghi nghỉ · cột Nghỉ tự tính số công thiếu</small></span><input type="checkbox" class="switch" id="set_autoFull"></label>
+      <label class="set-row"><span>Rung khi đổi kỳ<small>iPhone, iPad cần iOS 18 trở lên</small></span><input type="checkbox" class="switch" id="set_feelVibrate"></label>
+      <label class="set-row"><span>Tiếng tích khi đổi kỳ<small>Máy để im lặng thì có thể không nghe</small></span><input type="checkbox" class="switch" id="set_feelSound"></label>
+
+      <details class="set-fold">
+      <summary class="set-group">Cột chấm công <small>đổi tên, màu, thứ tự · tối đa 8 cột</small></summary>
+      <div id="colList"></div>
+      <button type="button" class="btn-plain small" id="btnAddCol">+ Thêm cột</button>
+      </details>
+
+      <div class="set-group">Kỳ công</div>
+      <label class="set-row"><span>Ngày bắt đầu kỳ công</span><select id="setStartDay"></select></label>
+      <p class="hint" id="startHint" hidden>Tháng không có ngày này (ví dụ tháng 2) thì kỳ bắt đầu vào ngày cuối tháng.</p>
+      <label class="set-row"><span>Ngày nhận lương</span><select id="setPayDay"></select></label>
+
+      <div class="set-row">
+        <span>Cỡ chữ</span>
+        <span class="font-ctrl">
+          <button type="button" data-action="font-down" aria-label="Chữ nhỏ hơn">A−</button>
+          <b id="fontValue">100%</b>
+          <button type="button" data-action="font-up" aria-label="Chữ to hơn">A+</button>
+        </span>
+      </div>
+
+      <details class="set-fold" id="syncFold">
+      <summary class="set-group">Đồng bộ nhiều máy <small>chấm ở máy nào, máy cùng nhóm cũng thấy</small></summary>
+      <p class="hint" id="syncStatus"></p>
+      <div id="syncOff">
+        <button type="button" class="btn-plain strong" data-action="sync-create">Tạo nhóm</button>
+        <button type="button" class="btn-plain" data-action="sync-join">Vào nhóm</button>
+      </div>
+      <div id="syncOnBox" hidden>
+        <button type="button" class="btn-plain strong" data-action="sync-repw" id="syncRepw" hidden>Nhập mật khẩu mới</button>
+        <button type="button" class="btn-plain strong" data-action="sync-now">Đồng bộ ngay</button>
+        <button type="button" class="btn-plain" data-action="sync-copy">Chép mã nhóm</button>
+        <div id="syncAdminBox" hidden>
+          <button type="button" class="btn-plain" data-action="sync-showpw">Xem mật khẩu</button>
+          <button type="button" class="btn-plain" data-action="sync-changepw">Đổi mật khẩu</button>
+          <button type="button" class="btn-plain small" data-action="sync-copyadm">Chép mã quản trị (cho máy khác của bạn)</button>
+        </div>
+        <button type="button" class="btn-plain small" data-action="sync-claim" id="syncClaim" hidden>Nhận quyền quản trị nhóm</button>
+        <button type="button" class="btn-plain small" data-action="sync-admcode" id="syncAdmCode" hidden>Nhập mã quản trị</button>
+        <button type="button" class="btn-plain danger" data-action="sync-leave">Rời nhóm</button>
+      </div>
+      </details>
+
+      <details class="set-fold">
+      <summary class="set-group">Dữ liệu, sao lưu <small>số chấm nằm trên máy này</small></summary>
+      <button type="button" class="btn-plain strong" data-action="backup">Sao lưu ra file</button>
+      <button type="button" class="btn-plain" data-action="merge-file">Gộp từ file sao lưu <small>(thêm số máy khác, không xoá gì)</small></button>
+      <button type="button" class="btn-plain" data-action="restore">Nhập lại từ file sao lưu <small>(thay toàn bộ)</small></button>
+      <button type="button" class="btn-plain" data-action="export-excel">Xuất Excel kỳ đang xem</button>
+      <button type="button" class="btn-plain" data-action="copy-notes">Sao chép ghi chú kỳ đang xem</button>
+      <button type="button" class="btn-plain" data-action="import-old">Nạp số từ app cũ (kỳ 9, 10, 11/2026)</button>
+      <button type="button" class="btn-plain danger" data-action="clear-period">Xoá nhanh số đã chấm kỳ đang xem</button>
+      </details>
+      <button type="button" class="btn-plain" data-action="help">Hướng dẫn sử dụng</button>
+      <button type="button" class="btn-reset" data-action="reset">Đặt về mặc định</button>
+      <p class="hint center">Sổ Công <span id="appVersion"></span> · dữ liệu lưu ngay trên máy</p>
+    </div>
+  </section>
+
+  <!-- Hỏi tên lần đầu (1.4.4) -->
+  <section class="picker" id="nameSheet" hidden role="dialog" aria-labelledby="nameTitle">
+    <div class="picker-title"><b id="nameTitle">Chào bạn! Tên bạn là gì?</b></div>
+    <p class="sync-intro">Tên này đặt cho cột chấm công của bạn (tối đa 8 chữ). Bảng có 3 cột: <b>cột tên bạn</b> để chấm 2 · 1 · nghỉ, <b>Full</b> tự điền ngày công, <b>Nghỉ</b> tự tính số công thiếu. Đổi tên, thêm cột trong Cài đặt.</p>
+    <input class="sync-input" id="firstNameInput" type="text" maxlength="40" autocomplete="name" placeholder="Ví dụ: Hùng">
+    <button type="button" class="btn-plain strong" id="nameOk">Bắt đầu</button>
+    <button type="button" class="btn-plain" id="nameSkip">Bỏ qua</button>
+  </section>
+
+  <!-- Nhập khoá mở (1.2.0) -->
+  <section class="picker" id="keySheet" hidden role="dialog" aria-labelledby="keyTitle">
+    <div class="picker-title"><b id="keyTitle">Nhập khoá mở Sổ Công</b></div>
+    <div class="key-part">
+      <ol class="key-steps">
+        <li>Mã máy của bạn: <b id="keyDevice" class="key-device">----</b></li>
+        <li>Bấm <b>Nhắn Zalo xin khoá</b> (Zalo 0793366886), câu xin khoá có sẵn mã máy.</li>
+        <li>Nhận khoá xong, dán vào ô dưới và bấm <b>Mở khoá</b> <u>trong vòng 1 giờ</u>. Dùng trọn đời trên máy này.</li>
+      </ol>
+      <button type="button" class="btn-plain strong" data-action="key-zalo">Nhắn Zalo xin khoá</button>
+      <textarea id="keyInput" class="note-input" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Dán tin nhắn có khoá (SC1....)"></textarea>
+    </div>
+    <div class="key-msg" id="keyMsg"></div>
+    <div class="coffee">
+      <div class="coffee-title">Mời tác giả một ly cà phê ☕ <small>(tự nguyện)</small></div>
+      <img src="icons/qr-momo.png" alt="Mã QR MoMo của tác giả" class="coffee-qr">
+      <button type="button" class="btn-plain small" data-action="save-qr">Lưu ảnh QR để quét bằng MoMo</button>
+    </div>
+    <div class="picker-row">
+      <button type="button" data-action="key-close">Đóng</button>
+      <button type="button" data-action="key-ok" class="primary key-part">Mở khoá</button>
+    </div>
+  </section>
+
+  <!-- Tạo nhóm / Vào nhóm đồng bộ (1.4.0) -->
+  <section class="picker" id="syncSheet" hidden role="dialog" aria-labelledby="syncTitle">
+    <div class="picker-title"><b id="syncTitle">Tạo nhóm đồng bộ</b></div>
+    <p class="sync-intro" id="syncIntro"></p>
+    <div class="sync-result" id="syncResult" hidden>
+      <div class="sync-code" id="syncResultCode"></div>
+      <button type="button" class="btn-plain small" data-action="sync-copy" id="syncResultCopy">Chép mã nhóm</button>
+    </div>
+    <input type="text" id="syncCode" class="sync-input" maxlength="24" placeholder="Mã nhóm, ví dụ ABCD-EFGH-JKMN-PQRS" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false">
+    <input type="password" id="syncPw" class="sync-input" maxlength="100" placeholder="Mật khẩu nhóm (ít nhất 8 ký tự)" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input type="password" id="syncPw2" class="sync-input" maxlength="100" placeholder="Nhập lại mật khẩu" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label class="sync-show" id="syncShowRow"><input type="checkbox" id="syncShowPw"> Hiện mật khẩu</label>
+    <div class="key-msg" id="syncMsg"></div>
+    <div class="picker-row">
+      <button type="button" data-action="sync-cancel">Đóng</button>
+      <button type="button" data-action="sync-ok" class="primary" id="syncOk">Tạo nhóm</button>
+    </div>
+  </section>
+
+  <!-- Hướng dẫn sử dụng (lát 5) -->
+  <section class="settings" id="helpSheet" hidden role="dialog" aria-label="Hướng dẫn sử dụng">
+    <div class="settings-head">
+      <b>Hướng dẫn sử dụng</b>
+      <button type="button" data-action="close-help" class="link">Xong</button>
+    </div>
+    <div class="settings-body help">
+      <h4>Chấm công</h4>
+      <p>Chạm vào ô → chọn <b>2</b>, <b>1</b> hoặc <b>nghỉ</b>. <b>Xoá ô</b> để bỏ. Dòng <b>Tổng</b> ở trên tự cộng; chữ "nghỉ" không cộng.</p>
+      <p>Cột <b>Full</b> tự điền: thứ 2–6 là 2, thứ 7 là 1. <b>Chủ nhật và ngày lễ</b> tự ghi "nghỉ" ở cột tên bạn và Full. Ngày nào khác thì chạm ô sửa.</p>
+      <p>Cột <b>Nghỉ</b> (sổ 5 cột: <b>Q-</b>, <b>P-</b>) tự tính số công thiếu: chấm ít hơn Full thì thiếu = Full − số đã chấm; chấm "nghỉ" thì thiếu cả Full; chưa chấm, chấm đủ, Chủ nhật, ngày lễ thì để trống. Vẫn chạm sửa tay được; nút <b>Tự tính</b> đưa ô về số tự tính.</p>
+
+      <h4>Chấm mấy công? (quy chế 3.7)</h4>
+      <p>Giờ làm: sáng 9:00–12:30, chiều 13:30–16:30. Mỗi ngày chấm 2 lần: lúc vào và lúc ra. Đúng 9:00, đúng 16:30 vẫn tính là đạt.</p>
+      <table class="help-table">
+        <tr><th>Ngày</th><th>Vào</th><th>Ra</th><th>Chấm</th></tr>
+        <tr><td>T2–T6</td><td>đến 9:00</td><td>từ 16:30</td><td><b>2</b></td></tr>
+        <tr><td>T2–T6</td><td>đến 9:00</td><td>12:30 – trước 16:30</td><td><b>1</b> (sáng)</td></tr>
+        <tr><td>T2–T6</td><td>sau 9:00 – đến 13:30</td><td>từ 16:30</td><td><b>1</b> (chiều)</td></tr>
+        <tr><td>Thứ 7</td><td>đến 9:00</td><td>từ 12:30</td><td><b>1</b></td></tr>
+        <tr><td colspan="3">Các trường hợp khác</td><td><b>0</b></td></tr>
+        <tr><td colspan="3">Chủ nhật, ngày lễ</td><td>nghỉ</td></tr>
+      </table>
+      <p>Chỉ chấm vào hoặc chỉ chấm ra: ngày đó không có công. Không du di phút đi muộn, về sớm. Không có giải trình.</p>
+
+      <h4>Kỳ công</h4>
+      <p>Thanh dưới cùng là bánh xe chọn kỳ, giống chỗ chọn giờ của iPhone: kỳ đang xem nằm giữa, vuốt lên hoặc xuống để đổi kỳ (dừng ở kỳ nào thì mở kỳ đó; dấu chấm là kỳ hôm nay), bấm <b>Hôm nay</b> để quay về. Vuốt ngang trên bảng cũng sang kỳ trước / sau. Đổi kỳ thì máy rung nhẹ và kêu tích, tắt được trong Cài đặt.</p>
+      <p>Dòng tô xanh đậm là hôm nay. Ngày đầu kỳ có vạch vàng. <b>Ngày nhận lương</b> có nền vàng nhạt, chạm vào ô ngày sẽ thấy chữ "Ngày nhận lương". Dòng ngày lễ tô đỏ nhạt.</p>
+      <h4>Ghi chú</h4>
+      <p>Chạm vào <b>ô ngày</b> ở cột trái → gõ ghi chú. Đóng lại là tự lưu. Ngày có ghi chú hiện chấm vàng nhỏ. Lưu ý: xoá hết chữ rồi đóng thì ghi chú đó bị xoá.</p>
+      <h4>Giữ dữ liệu an toàn</h4>
+      <div class="env-android">
+        <p>Dữ liệu chỉ nằm trên máy này. <b>Gỡ app là mất dữ liệu.</b> Cập nhật bản mới thì cài đè, không gỡ bản cũ.</p>
+        <p>Mỗi kỳ nên vào Cài đặt → <b>Sao lưu ra file</b>. File được lưu vào thư mục <b>Tải xuống/SoCong</b> và mở bảng gửi: chọn Zalo (gửi cho chính mình) hoặc Google Drive.</p>
+        <p>Đổi máy hoặc cài lại: cài Sổ Công → Cài đặt → <b>Nhập lại từ file sao lưu</b> → chọn file. Dữ liệu trên máy sẽ được thay bằng file đó.</p>
+        <p>Lấy thêm số từ máy khác mà không mất số đang có: Cài đặt → <b>Gộp từ file sao lưu</b> → chọn file của máy kia. App ghép từng ô, ô nào hai máy khác nhau thì lấy lần sửa sau cùng, không xoá gì.</p>
+      </div>
+      <div class="env-web">
+        <p>Dữ liệu chỉ nằm trên máy này, trong app ở màn hình chính. <b>Xoá biểu tượng Sổ Công là mất dữ liệu.</b> Bản mới tự cập nhật, không cần cài lại.</p>
+        <p>Trên iPhone, nhớ mở bằng <b>biểu tượng ở màn hình chính</b>. Mở bằng tab Safari là một kho dữ liệu khác, và Safari có thể tự xoá sau 7 ngày không mở.</p>
+        <p>Mỗi kỳ nên vào Cài đặt → <b>Sao lưu ra file</b> → bảng Chia sẻ hiện ra: chọn <b>Lưu vào Tệp</b>, hoặc gửi Zalo cho chính mình, hoặc Google Drive.</p>
+        <p>Đổi máy: thêm Sổ Công vào màn hình chính máy mới → Cài đặt → <b>Nhập lại từ file sao lưu</b> → chọn file. Dùng được cả file sao lưu từ bản Android.</p>
+        <p>Lấy thêm số từ máy khác mà không mất số đang có: Cài đặt → <b>Gộp từ file sao lưu</b> → chọn file của máy kia. App ghép từng ô, ô nào hai máy khác nhau thì lấy lần sửa sau cùng, không xoá gì.</p>
+      </div>
+      <h4>Đồng bộ nhiều máy</h4>
+      <p>Để nhiều máy dùng <b>chung một sổ</b> (ví dụ điện thoại và iPad, hai vợ chồng): chấm ở máy nào, các máy cùng nhóm đều thấy khi có mạng.</p>
+      <p><b>Tạo nhóm</b> (làm một lần, trên máy có số đầy đủ nhất; máy đang dùng thử cũng được): Cài đặt → Đồng bộ nhiều máy → <b>Tạo nhóm</b> → đặt mật khẩu nhóm (ít nhất 8 ký tự). Mật khẩu nên dài, khó đoán (ví dụ một câu 3–4 từ). App hiện <b>mã nhóm</b> 16 ký tự: ghi lại mã và mật khẩu. Máy hết hạn dùng thử mà chưa có khoá vẫn vào nhóm để nhận số về xem, nhưng không chấm được.</p>
+      <p><b>Thêm máy</b>: trên máy kia, Cài đặt → Đồng bộ nhiều máy → <b>Vào nhóm</b> → nhập mã nhóm và mật khẩu. Số máy đó đang có được gộp vào, không mất ô nào; ô hai máy khác nhau thì theo nhóm.</p>
+      <p>App tự gửi vài giây sau mỗi lần chấm, tự lấy số mới khi mở app, và khi app đang mở thì cứ 20–60 giây tự kiểm có số mới không. Muốn lấy ngay: <b>kéo bảng xuống rồi thả</b>, hoặc bấm <b>Đồng bộ ngay</b>. Dấu nhỏ cạnh chữ Sổ Công: <b>✓</b> đã khớp, <b>⟳</b> đang gửi/nhận, <b>⚠</b> chưa có mạng hoặc lỗi (chạm vào để xem). Không có mạng vẫn chấm bình thường. Hai máy sửa cùng một ô thì lấy lần sửa sau cùng.</p>
+      <p>Dữ liệu được <b>khoá bằng mật khẩu nhóm ngay trên máy</b> rồi mới gửi lên quyenbds.com: máy chủ chỉ giữ chuỗi đã khoá, không ai đọc được nếu không có mật khẩu. Khoá mở, cỡ chữ, xem gọn, tên người chấm vẫn riêng từng máy.</p>
+      <p><b>Máy quản trị</b>: máy tạo nhóm là máy quản trị, chỉ máy này thấy nút <b>Xem mật khẩu</b> và <b>Đổi mật khẩu</b>. Nhóm tạo trước bản 1.4.3: bấm <b>Nhận quyền quản trị nhóm</b> trên máy của người quản lý (chỉ nhận được một lần). Máy khác của chính bạn: trên máy quản trị bấm <b>Chép mã quản trị</b>, gửi Zalo cho mình, máy kia bấm <b>Nhập mã quản trị</b>. Đổi mật khẩu xong, các máy khác bấm <b>Nhập mật khẩu mới</b> trong mục Đồng bộ nhiều máy rồi dùng tiếp, không mất số.</p>
+      <p><b>Quên mật khẩu nhóm</b>: máy quản trị bấm Xem mật khẩu (nếu đã lưu). Nếu không xem được: không ai mở lại được nhóm cũ, nhưng số vẫn còn trên từng máy. Trên mọi máy bấm <b>Rời nhóm</b>, rồi một máy (máy có số đầy đủ nhất) <b>Tạo nhóm</b> mới với mật khẩu mới, các máy khác <b>Vào nhóm</b> mới. Nhóm cũ trên máy chủ tự xoá sau 400 ngày.</p>
+      <h4>Excel, Zalo</h4>
+      <p><b>Xuất Excel kỳ đang xem</b>: ra file .xlsx mở bằng Excel hoặc Google Sheets. <b>Sao chép ghi chú</b>: chép mọi ghi chú trong kỳ để dán vào Zalo.</p>
+      <h4>Khoá mở</h4>
+      <p>Mới cài được <b>dùng thử 25 ngày</b>. Xin khoá: Cài đặt → <b>Nhập khoá mở</b> → <b>Nhắn Zalo xin khoá</b> (Zalo 0793366886, câu nhắn có sẵn mã máy). Khoá gắn với máy này và phải nhập <b>trong vòng 1 giờ</b> sau khi nhận; nhập xong dùng trọn đời. Trên iPhone nên dán khoá ngay trong app ở màn hình chính (link mở khoá mở bằng Safari là kho dữ liệu khác). Hết hạn thử mà chưa có khoá: vẫn xem, sao lưu, xuất Excel được, nhưng không chấm tiếp được.</p>
+      <h4>Cài đặt khác</h4>
+      <p>Đổi tên, màu, thứ tự cột; thêm bớt cột (cột bỏ đi vẫn lấy lại được). Ngày bắt đầu kỳ, ngày nhận lương, cỡ chữ, xem gọn cả kỳ trên một màn hình.</p>
+      <p><b>Xoá nhanh</b> chỉ xoá số chấm tay và ghi chú của kỳ đang xem, có hỏi lại 2 lần.</p>
+    </div>
+  </section>
+
+  <input type="file" id="fileInput" hidden>
+
+  <script src="khoa-cong-khai.js"></script>
+  <script src="lunar.js"></script>
+  <script src="ngay-nghi.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

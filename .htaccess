@@ -1,0 +1,12 @@
+# Sổ Công (app web) - quyenbds.com/socong
+Options -Indexes
+AddType application/manifest+json .webmanifest
+<IfModule mod_expires.c>
+  ExpiresActive Off
+</IfModule>
+<IfModule mod_headers.c>
+  # Mọi file của app: luôn hỏi lại máy chủ để bản mới không lẫn file cũ (app vẫn chạy không mạng nhờ sw.js)
+  Header set Cache-Control "no-cache"
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "no-referrer"
+</IfModule>

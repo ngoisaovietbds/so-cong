@@ -1,0 +1,2 @@
+/* Khoá CÔNG KHAI để app kiểm khoá mở (tạo bởi cong-cu-khoa/tao_khoa.py). Công khai được, không bí mật. */
+window.SoCongKhoaCongKhai = {"jwk": {"kty": "EC", "crv": "P-256", "x": "zNMT-_bBF90gp0PmCQ5-bsODS2NRLY-r2oyyEzDi68Y", "y": "8fgLu9AmtPnj5ROYG8vk109Pq9xRbL21takjSvJfrnc"}, "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzNMT+/bBF90gp0PmCQ5+bsODS2NRLY+r2oyyEzDi68bx+Au70Ca0+ePlE5gby+TXT0+r3FFsvbW1qSNK8l+udw=="};
